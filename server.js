@@ -1,4 +1,5 @@
 // server.js - Main entry point for the API
+const { startExpiryTimer } = require('./timer');
 const express = require('express');
 const cors = require('cors');
 const config = require('./config');
@@ -29,4 +30,5 @@ app.get('/api/seats', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Seat Reservation API running on http://localhost:${PORT}`);
+    startExpiryTimer(); // Start the background expiry and promotion worker
 });

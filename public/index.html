@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seat Reservation System</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; background: #f4f7f6; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
+        .seat { padding: 15px; text-align: center; border: 2px solid #ccc; border-radius: 6px; cursor: pointer; font-weight: bold; background: #e2e8f0; }
+        .seat.available { background: #c6f6d5; border-color: #38a169; color: #22543d; }
+        .seat.held { background: #feebc8; border-color: #dd6b20; color: #742a2a; }
+        .seat.confirmed { background: #bee3f8; border-color: #3182ce; color: #2b6cb0; }
+        input, button { padding: 10px; margin: 5px 0; font-size: 16px; width: 100%; box-sizing: border-box; }
+        button { background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #2b6cb0; }
+        .row { display: flex; gap: 15px; }
+        .col { flex: 1; }
+    </style>
+</head>
+<body>
+
+    <h1>Event Seat Reservation System</h1>
+
+    <div class="card">
+        <h3>1. Enter Your Email</h3>
+        <input type="email" id="userEmail" placeholder="e.g. noluthando@example.com" value="test@example.com">
+    </div>
+
+    <div class="row">
+        <div class="card col">
+            <h3>Seat Map (Live Polling)</h3>
+            <p>Click an available seat to hold it.</p>
+            <div id="seatGrid" class="grid"></div>
+        </div>
+
+        <div class="card col">
+            <h3>Manage Your Hold</h3>
+            <p>Enter hold code to confirm or release.</p>
+            <input type="text" id="holdCodeInput" placeholder="6-character Hold Code">
+            <button onclick="confirmHold()">Confirm Hold</button>
+            <button onclick="releaseSeat()" style="background: #e53e3e;">Release Seat</button>
+            <p id="actionMessage" style="font-weight: bold; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        async function fetchSeats() {
+            try {
+                const res = await fetch(`${API_URL}/seats`);
+                const data = await res.json();
+                if (data.success) {
+                    renderSeats(data.seats);
+                }
+            } catch (err) {
+                console.error('Error fetching seats:', err);
+            }
+        }
+
+        function renderSeats(seats) {
+            const grid = document.getElementById('seatGrid');
+            grid.innerHTML = '';
+            seats.seats || seats.forEach ? (seats.forEach ? seats : seats.seats).forEach(seat => {
+                const div = document.createElement('div');
+                div.className = `seat ${seat.status}`;
+                div.innerHTML = `Seat ${seat.seatNumber}<br><small>${seat.status}</small>`;
+                if (seat.status === 'available') {
+                    div.onclick = () => placeHold(seat.seatNumber);
+                }
+                grid.appendChild(div);
+            }) : null;
+        }
+
+        async function placeHold(seatNumber) {
+            const email = document.getElementById('userEmail').value;
+            if (!email) {
+                alert('Please enter your email first!');
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/holds`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seatNumber, email })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Hold successful! Your Hold Code is: ${data.holdCode}`);
+                document.getElementById('holdCodeInput').value = data.holdCode;
+                fetchSeats();
+            } else {
+                alert(`Failed: ${data.reason}`);
+            }
+        }
+
+        async function confirmHold() {
+            const email = document.getElementById('userEmail').value;
+            const holdCode = document.getElementById('holdCodeInput').value;
+            const res = await fetch(`${API_URL}/confirms`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ holdCode, email })
+            });
+            const data = await res.json();
+            document.getElementById('actionMessage').innerText = data.success ? 'Seat confirmed successfully!' : `Error: ${data.reason}`;
+            fetchSeats();
+        }
+
+        async function releaseSeat() {
+            const email = document.getElementById('userEmail').value;
+            const holdCode = document.getElementById('holdCodeInput').value;
+            const res = await fetch(`${API_URL}/releases`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ holdCode, email })
+            });
+            const data = await res.json();
+            document.getElementById('actionMessage').innerText = data.success ? 'Seat released successfully!' : `Error: ${data.reason}`;
+            fetchSeats();
+        }
+
+        setInterval(fetchSeats, 3000);
+        fetchSeats();
+    </script>
+</body>
+</html>

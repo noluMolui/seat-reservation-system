@@ -189,7 +189,7 @@
         <div class="panel" style="flex: 1;">
             <h3>User Session</h3>
             <label for="userEmail">Email Address</label>
-            <input type="email" id="userEmail" value="student@example.com">
+            <input type="email" id="userEmail" placeholder="Enter your email address">
 
             <h3>Manage Hold</h3>
             <label for="holdCodeInput">Hold Code</label>
@@ -258,7 +258,7 @@
         }
 
         async function placeHold(seatNumber) {
-            const email = document.getElementById('userEmail').value;
+            const email = document.getElementById('userEmail').value.trim();
             if (!email) {
                 alert('Please enter your email first!');
                 return;
@@ -281,8 +281,12 @@
         }
 
         async function confirmHold() {
-            const email = document.getElementById('userEmail').value;
+            const email = document.getElementById('userEmail').value.trim();
             const holdCode = document.getElementById('holdCodeInput').value.trim();
+            if (!email) {
+                setMessage('Please enter your email.', true);
+                return;
+            }
             if (!holdCode) {
                 setMessage('Please enter a hold code.', true);
                 return;
@@ -300,8 +304,12 @@
         }
 
         async function releaseSeat() {
-            const email = document.getElementById('userEmail').value;
+            const email = document.getElementById('userEmail').value.trim();
             const holdCode = document.getElementById('holdCodeInput').value.trim();
+            if (!email) {
+                setMessage('Please enter your email.', true);
+                return;
+            }
             if (!holdCode) {
                 setMessage('Please enter a hold code.', true);
                 return;

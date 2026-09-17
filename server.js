@@ -1,4 +1,5 @@
-// server.js - Main entry point for the API
+// server.js - Main Express Server for Seat Reservation System
+
 const express = require('express');
 const cors = require('cors');
 const config = require('./config');
@@ -8,28 +9,28 @@ const { startExpiryTimer } = require('./timer');
 
 const app = express();
 
-// --- 1. MIDDLEWARE ---
-app.use(express.json());                    // Parses incoming JSON request payloads
-app.use(cors());                            // Enables Cross-Origin Resource Sharing
-app.use(express.static('public'));          // Serves your frontend HTML/JS files from the 'public' folder
+// Middleware setup
+app.use(express.json());
+app.use(cors());
+app.use(express.static('public')); // Serves our HTML/CSS frontend files
 
-// --- 2. API ROUTES ---
-
-// Get Seats Status
+// 1. Get all seats status
 app.get('/api/seats', (req, res) => {
     res.json({ success: true, seats: storage.seats });
 });
 
-// Place a Hold
+// 2. Place a temporary hold on a seat
 app.post('/api/holds', (req, res) => {
     const { seatNumber, email } = req.body;
     const currentTime = Date.now();
 
+    // Initialize user history array if it doesn't exist yet
     if (!storage.userHistory.has(email)) {
         storage.userHistory.set(email, []);
     }
 
-    const result = rules.processPlaceHold(
+    // Run validation checks from rulesEngine
+    const validationResult = rules.processPlaceHold(
         seatNumber, 
         email, 
         storage.seats, 
@@ -38,98 +39,105 @@ app.post('/api/holds', (req, res) => {
         currentTime
     );
 
-    if (!result.success) {
-        return res.status(400).json(result);
+    // If rules failed, return error and reason
+    if (!validationResult.success) {
+        return res.status(400).json(validationResult);
     }
 
+    // Update the seat state in memory
     const seat = storage.seats.find(s => s.seatNumber === seatNumber);
     seat.status = 'held';
     seat.holderEmail = email;
-    seat.holdCode = result.holdCode;
-    seat.expiryTime = result.expiryTime;
+    seat.holdCode = validationResult.holdCode;
+    seat.expiryTime = validationResult.expiryTime;
 
-    storage.activeHolds.set(result.holdCode, {
-        holdCode: result.holdCode,
+    // Track active hold in storage map
+    storage.activeHolds.set(validationResult.holdCode, {
+        holdCode: validationResult.holdCode,
         holderEmail: email,
-        seatNumber,
+        seatNumber: seatNumber,
         status: 'held',
-        expiryTime: result.expiryTime,
+        expiryTime: validationResult.expiryTime,
         extensionCount: 0
     });
 
+    // Record timestamp for rate-limiting (max 5 per hour)
     storage.userHistory.get(email).push(currentTime);
-    storage.logEvent('hold_placed', seatNumber, email, result.holdCode);
 
+    // Record event in append-only log
+    storage.logEvent('hold_placed', seatNumber, email, validationResult.holdCode);
+
+    // Send successful response back to frontend
     res.status(201).json({
         success: true,
-        seatNumber: result.seatNumber,
-        holdCode: result.holdCode,
-        expiryTime: result.expiryTime
+        seatNumber: validationResult.seatNumber,
+        holdCode: validationResult.holdCode,
+        expiryTime: validationResult.expiryTime
     });
 });
 
-// Confirm a Hold
+// 3. Confirm a held seat
 app.post('/api/confirms', (req, res) => {
     const { holdCode, email } = req.body;
     const currentTime = Date.now();
 
-    const result = rules.processConfirmHold(holdCode, email, storage.activeHolds, storage.seats, currentTime);
+    const validationResult = rules.processConfirmHold(holdCode, email, storage.activeHolds, storage.seats, currentTime);
 
-    if (!result.success) {
-        return res.status(400).json(result);
+    if (!validationResult.success) {
+        return res.status(400).json(validationResult);
     }
 
-    if (!result.idempotent) {
-        storage.logEvent('hold_confirmed', result.seatNumber, email, holdCode);
+    // Log event if it's not an idempotent repeat request
+    if (!validationResult.idempotent) {
+        storage.logEvent('hold_confirmed', validationResult.seatNumber, email, holdCode);
     }
 
     res.json({ success: true, message: 'Hold confirmed successfully.' });
 });
 
-// Release a Seat
+// 4. Release a hold or confirmed seat
 app.post('/api/releases', (req, res) => {
     const { holdCode, email } = req.body;
 
-    const result = rules.processReleaseSeat(holdCode, email, storage.activeHolds, storage.seats);
+    const validationResult = rules.processReleaseSeat(holdCode, email, storage.activeHolds, storage.seats);
 
-    if (!result.success) {
-        return res.status(400).json(result);
+    if (!validationResult.success) {
+        return res.status(400).json(validationResult);
     }
 
-    storage.logEvent('seat_released', result.seatNumber, email, holdCode);
+    storage.logEvent('seat_released', validationResult.seatNumber, email, holdCode);
     res.json({ success: true, message: 'Seat released successfully.' });
 });
 
-// Join Waitlist
+// 5. Join the waitlist if all seats are taken
 app.post('/api/waitlist', (req, res) => {
     const { email } = req.body;
 
-    const result = rules.processJoinWaitlist(email, storage.seats, storage.waitlist, storage.activeHolds);
+    const validationResult = rules.processJoinWaitlist(email, storage.seats, storage.waitlist, storage.activeHolds);
 
-    if (!result.success) {
-        return res.status(400).json(result);
+    if (!validationResult.success) {
+        return res.status(400).json(validationResult);
     }
 
     storage.logEvent('waitlist_joined', null, email, null);
     res.status(201).json({ success: true, message: 'Successfully joined waitlist.' });
 });
 
-// Get Event Log
+// 6. Get system event audit logs (optional seat filter)
 app.get('/api/logs', (req, res) => {
     const { seatNumber } = req.query;
-    let logs = storage.eventLog;
+    let logsToReturn = storage.eventLog;
 
     if (seatNumber) {
-        logs = logs.filter(log => log.seatNumber === parseInt(seatNumber));
+        logsToReturn = logsToReturn.filter(log => log.seatNumber === parseInt(seatNumber));
     }
 
-    res.json({ success: true, logs });
+    res.json({ success: true, logs: logsToReturn });
 });
 
-
-
+// Start server and launch background timer worker
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Seat Reservation API running on http://localhost:${PORT}`);
-    startExpiryTimer(); // Boots up the background expiry & promotion worker
+    console.log(`Server is running on port ${PORT}`);
+    startExpiryTimer(); // Background loop checking for expired holds and promoting waitlist
 });

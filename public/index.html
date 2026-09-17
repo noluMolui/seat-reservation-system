@@ -5,43 +5,207 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seat Reservation System</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; background: #f4f7f6; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
-        .seat { padding: 15px; text-align: center; border: 2px solid #ccc; border-radius: 6px; cursor: pointer; font-weight: bold; background: #e2e8f0; }
-        .seat.available { background: #c6f6d5; border-color: #38a169; color: #22543d; }
-        .seat.held { background: #feebc8; border-color: #dd6b20; color: #742a2a; }
-        .seat.confirmed { background: #bee3f8; border-color: #3182ce; color: #2b6cb0; }
-        input, button { padding: 10px; margin: 5px 0; font-size: 16px; width: 100%; box-sizing: border-box; }
-        button { background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #2b6cb0; }
-        .row { display: flex; gap: 15px; }
-        .col { flex: 1; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+        }
+
+        .panel {
+            flex: 1;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 8px;
+        }
+
+        /* Form elements */
+        label {
+            font-weight: bold;
+            font-size: 0.85rem;
+            color: #555;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        /* Seat Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .seat {
+            padding: 12px 5px;
+            text-align: center;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            background-color: #ecf0f1;
+            font-size: 0.9rem;
+        }
+
+        .seat small {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: normal;
+            margin-top: 3px;
+        }
+
+        .seat.available {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .seat.held {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+            cursor: not-allowed;
+        }
+
+        .seat.confirmed {
+            background-color: #cce5ff;
+            border-color: #004085;
+            color: #004085;
+            cursor: not-allowed;
+        }
+
+        /* Log window */
+        .log-panel {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .log-box {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            height: 120px;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            margin-bottom: 4px;
+        }
+
+        #actionMessage {
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Event Seat Reservation System</h1>
+    <h1>Seat Reservation System</h1>
+    <div class="subtitle">Web Development Project Dashboard</div>
 
-    <div class="card">
-        <h3>1. Enter Your Email</h3>
-        <input type="email" id="userEmail" placeholder="e.g. noluthando@example.com" value="test@example.com">
-    </div>
-
-    <div class="row">
-        <div class="card col">
-            <h3>Seat Map (Live Polling)</h3>
-            <p>Click an available seat to hold it.</p>
+    <div class="container">
+        <!-- Left Side: Seat Map -->
+        <div class="panel" style="flex: 1.2;">
+            <h3>Event Seat Map</h3>
+            <p style="font-size: 0.9rem; color: #666;">Click any green seat to place a temporary hold.</p>
             <div id="seatGrid" class="grid"></div>
         </div>
 
-        <div class="card col">
-            <h3>Manage Your Hold</h3>
-            <p>Enter hold code to confirm or release.</p>
-            <input type="text" id="holdCodeInput" placeholder="6-character Hold Code">
+        <!-- Right Side: Controls -->
+        <div class="panel" style="flex: 1;">
+            <h3>User Session</h3>
+            <label for="userEmail">Email Address</label>
+            <input type="email" id="userEmail" value="student@example.com">
+
+            <h3>Manage Hold</h3>
+            <label for="holdCodeInput">Hold Code</label>
+            <input type="text" id="holdCodeInput" placeholder="Enter 6-digit code">
+            
             <button onclick="confirmHold()">Confirm Hold</button>
-            <button onclick="releaseSeat()" style="background: #e53e3e;">Release Seat</button>
-            <p id="actionMessage" style="font-weight: bold; margin-top: 10px;"></p>
+            <button onclick="releaseSeat()" class="btn-danger">Release Seat</button>
+            <p id="actionMessage"></p>
+        </div>
+    </div>
+
+    <!-- Bottom: Activity Log -->
+    <div class="log-panel" style="margin-top: 20px;">
+        <h3>System Activity Log</h3>
+        <div id="logContainer" class="log-box">
+            <div class="log-item">[System] Initialized successfully.</div>
         </div>
     </div>
 
@@ -60,18 +224,37 @@
             }
         }
 
-        function renderSeats(seats) {
+        async function fetchLogs() {
+            try {
+                const res = await fetch(`${API_URL}/logs`);
+                const data = await res.json();
+                if (data.success && data.logs) {
+                    const logContainer = document.getElementById('logContainer');
+                    logContainer.innerHTML = data.logs.slice(-4).reverse().map(log => `
+                        <div class="log-item">> [${log.type}] Seat ${log.seatNumber || '-'} | ${log.email}</div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error('Error fetching logs:', err);
+            }
+        }
+
+        function renderSeats(seatsArray) {
             const grid = document.getElementById('seatGrid');
             grid.innerHTML = '';
-            seats.seats || seats.forEach ? (seats.forEach ? seats : seats.seats).forEach(seat => {
+            
+            const seats = Array.isArray(seatsArray) ? seatsArray : seatsArray.seats;
+            if (!seats) return;
+
+            seats.forEach(seat => {
                 const div = document.createElement('div');
                 div.className = `seat ${seat.status}`;
-                div.innerHTML = `Seat ${seat.seatNumber}<br><small>${seat.status}</small>`;
+                div.innerHTML = `Seat ${seat.seatNumber}<small>${seat.status}</small>`;
                 if (seat.status === 'available') {
                     div.onclick = () => placeHold(seat.seatNumber);
                 }
                 grid.appendChild(div);
-            }) : null;
+            });
         }
 
         async function placeHold(seatNumber) {
@@ -88,42 +271,66 @@
             });
             const data = await res.json();
             if (data.success) {
-                alert(`Hold successful! Your Hold Code is: ${data.holdCode}`);
                 document.getElementById('holdCodeInput').value = data.holdCode;
+                setMessage(`Success! Code: ${data.holdCode}`, false);
                 fetchSeats();
+                fetchLogs();
             } else {
-                alert(`Failed: ${data.reason}`);
+                setMessage(`Failed: ${data.reason}`, true);
             }
         }
 
         async function confirmHold() {
             const email = document.getElementById('userEmail').value;
-            const holdCode = document.getElementById('holdCodeInput').value;
+            const holdCode = document.getElementById('holdCodeInput').value.trim();
+            if (!holdCode) {
+                setMessage('Please enter a hold code.', true);
+                return;
+            }
+
             const res = await fetch(`${API_URL}/confirms`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ holdCode, email })
             });
             const data = await res.json();
-            document.getElementById('actionMessage').innerText = data.success ? 'Seat confirmed successfully!' : `Error: ${data.reason}`;
+            setMessage(data.success ? 'Seat confirmed successfully!' : `Error: ${data.reason}`, !data.success);
             fetchSeats();
+            fetchLogs();
         }
 
         async function releaseSeat() {
             const email = document.getElementById('userEmail').value;
-            const holdCode = document.getElementById('holdCodeInput').value;
+            const holdCode = document.getElementById('holdCodeInput').value.trim();
+            if (!holdCode) {
+                setMessage('Please enter a hold code.', true);
+                return;
+            }
+
             const res = await fetch(`${API_URL}/releases`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ holdCode, email })
             });
             const data = await res.json();
-            document.getElementById('actionMessage').innerText = data.success ? 'Seat released successfully!' : `Error: ${data.reason}`;
+            setMessage(data.success ? 'Seat released.' : `Error: ${data.reason}`, !data.success);
             fetchSeats();
+            fetchLogs();
         }
 
-        setInterval(fetchSeats, 3000);
+        function setMessage(text, isError) {
+            const msg = document.getElementById('actionMessage');
+            msg.style.color = isError ? '#e74c3c' : '#27ae60';
+            msg.innerText = text;
+        }
+
+        setInterval(() => {
+            fetchSeats();
+            fetchLogs();
+        }, 3000);
+
         fetchSeats();
+        fetchLogs();
     </script>
 </body>
 </html>
